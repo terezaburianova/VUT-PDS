@@ -81,12 +81,14 @@ def init_flag():
 
 def peer_flag():
     # get BT-DHT port number
-    btdht_port_call = "tshark -r {pcap} -c 1 -T fields -Y \"data contains \"get_peers\" || data contains \"find_node\"\" -E separator=';' -e udp.srcport ".format(pcap=args.pcap)
-    call_tshark("bt_dht_port", btdht_port_call)
-    with open("./csv/bt_dht_port.csv", newline='') as btdht_port:
-        reader = csv.reader(btdht_port, delimiter=";")
-        dht_port_row = next(reader)
-        dht_port = dht_port_row[0]
+    btdht_port_call = "tshark -r {pcap} -a packets:1 -T fields -Y \'udp contains \"get_peers\" || udp contains \"find_node\"\' -E separator=';' -e udp.srcport".format(pcap=args.pcap)
+    try:
+        dht_port_s = subprocess.check_output(btdht_port_call, shell=True)
+    except subprocess.CalledProcessError as e:
+        sys.exit("Error: tshark call was unsuccessful.")
+    if not dht_port_s:
+        sys.exit("Error: BT-DHT port not found. Possibly no BT-DHT requests in the input capture or TShark version is not 4.0.0 or higher.")
+    dht_port = int(dht_port_s)
     # get all BT-DHT communication as a csv file
     btdht_call = "tshark -r {pcap} -d udp.port=={port},bt-dht -T fields -E separator=';' -E header=y -e frame.time_relative -e ip.src -e ip.dst -e udp.srcport -e udp.dstport -e _ws.col.Info -e bt-dht.bencoded.string -e bt-dht.id -e bt-dht.ip -e bt-dht.port \"bt-dht\"".format(pcap=args.pcap, port=dht_port)
     call_tshark("bt_dht", btdht_call)
