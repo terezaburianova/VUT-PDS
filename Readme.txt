@@ -10,14 +10,18 @@ List of files in the archive:
 |-- large_peers.txt
 |-- small_download.txt
 |-- small_init.txt
+|- bt-monitor
 |- bt-monitor.py
 |- Readme.txt
 |- xburia28.pdf
 ---------------------------------------------------------
 The application was tested using Python 3.8.13.
-A shebang was included, therefore the app can be run as a usual script:
+A script without file extension was created, therefore the app can be run as a usual script:
+./bt-monitor -pcap <pcap> -init | -peers | -download
+If it does not work, try:
+chmod u+x bt-monitor
+Otherwise it can be run as:
 ./bt-monitor.py -pcap <pcap> -init | -peers | -download
-If it does not work, it can be run as:
 python3.8 bt-monitor.py -pcap <pcap> -init | -peers | -download
 ---------------------------------------------------------
 The latest stable release of TShark (Wireshark), which is 4.0.0 or higher, is required.
