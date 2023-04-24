@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import subprocess
 import sys
 import os
@@ -46,7 +48,10 @@ def init_flag():
     call_tshark("nodes_bs_file", nodes_bs_call)
     with open("./csv/nodes_bootstrap.csv", newline='') as node_bs_csv:
         reader = csv.reader(node_bs_csv, delimiter=";")
-        row1 = next(reader)
+        try:
+            row1 = next(reader)
+        except:
+            sys.exit("No data, possibly the BT-DHT bootstrapping communication is missing or was not detected.")
         dht_port = row1[1]
     ## get all BT-DHT communication as a csv file
     btdht_call = "tshark -r {pcap} -d udp.port=={port},bt-dht -T fields -E separator=';' -E header=y -e frame.time_relative -e ip.src -e ip.dst -e udp.srcport -e udp.dstport -e _ws.col.Info -e bt-dht.bencoded.string -e bt-dht.id -e bt-dht.ip -e bt-dht.port \"bt-dht\"".format(pcap=args.pcap, port=dht_port)
@@ -96,7 +101,10 @@ def peer_flag():
     nodes_list = {}
     with open("./csv/bt_dht.csv", newline='') as btdht_csv, open("./csv/bt_dht_nodes_peers.csv", "w", newline='') as btdht_csv_np:
         reader = csv.reader(btdht_csv, delimiter=";")
-        responses_f = filter(lambda p: 'y,r' in p[bt_dht_bencoded_string], reader)
+        try:
+            responses_f = filter(lambda p: 'y,r' in p[bt_dht_bencoded_string], reader)
+        except:
+            sys.exit("Filtering of BT-DHT responses was unsuccessful, possibly the BT-DHT communication is missing or was not detected.")
         csv.writer(btdht_csv_np, delimiter=";").writerows(responses_f)
     with open("./csv/bt_dht_nodes_peers.csv", newline='') as btdht_csv_np:
         reader = csv.reader(btdht_csv_np, delimiter=";")
