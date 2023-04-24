@@ -1,0 +1,23 @@
+185.157.221.247 : dht.libtorrent.org
+1 initial request sent to port 25401, transaction ID 08ca
+1 response received: BitTorrent DHT Protocol reply=3 nodes
+
+67.215.246.10 : router.bittorrent.com
+1 initial request sent to port 6881, transaction ID 6e98
+1 response received: BitTorrent DHT Protocol reply=16 nodes
+
+82.221.103.244 : router.utorrent.com
+1 initial request sent to port 6881, transaction ID b2aa
+no response received
+
+212.129.33.59 : dht.transmissionbt.com
+no initial request sent
+
+87.98.162.88 : dht.transmissionbt.com
+1 initial request sent to port 6881, transaction ID 8551
+1 response received: BitTorrent DHT Protocol reply=8 nodes
+
+34.229.89.117 : dht.aelitis.com
+1 initial request sent to port 6881, transaction ID ff5c
+no response received
+
