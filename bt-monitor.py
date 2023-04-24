@@ -38,10 +38,10 @@ def init_flag():
 
     # get BT-DHT initial requests to bootstrap nodes
     ## find out port used for BT-DHT from initial requests
-    nodes_bs_filters = "" 
-    for key in bootstrap_list.keys():
-        nodes_bs_filters += "ip.dst == " + key + " || "
-    nodes_bs_filters = nodes_bs_filters[:len(nodes_bs_filters)-4]
+    ips_list = str(list(bootstrap_list.keys()))
+    ips_list = "{" + ips_list[1:len(ips_list)-1] + "}"
+    ips_list = ips_list.replace("'", "\"")
+    nodes_bs_filters = "ip.dst in {ips}".format(ips=ips_list)
     nodes_bs_call = "tshark -r {pcap} -T fields -E separator=';' -Y \"{filter}\" -e frame.time_relative -e udp.srcport".format(pcap=args.pcap, filter=nodes_bs_filters)
     call_tshark("nodes_bs_file", nodes_bs_call)
     with open("./csv/nodes_bootstrap.csv", newline='') as node_bs_csv:
@@ -60,7 +60,7 @@ def init_flag():
             res = False
             btdht_csv.seek(0)
             for rows in reader:
-                if req == False and rows[ip_dst] == key and "bs" in rows[bt_dht_bencoded_string]:
+                if req == False and rows[ip_dst] == key:
                     tID_index = rows[bt_dht_bencoded_string].find("t,")
                     if tID_index == -1:
                         sys.exit("Invalid BT-DHT packet.")
@@ -110,6 +110,56 @@ def peer_flag():
         for key in nodes_list.keys():
             print("Node ID {id}: {ip}:{port}, {conn} connection(s)".format(id=key, ip=nodes_list[key][0], port=nodes_list[key][1], conn=nodes_list[key][2]))
 
+def download_flag():
+    # get information about hash and peers from handshake
+    handshake_call = "tshark -r {pcap} -T fields -E separator=';' -Y \"bittorrent.info_hash\" -o tcp.reassemble_out_of_order:TRUE -2 -e frame.time_relative -e ip.src -e ip.dst -e tcp.srcport -e tcp.dstport -e bittorrent.info_hash".format(pcap=args.pcap)
+    call_tshark("handshakes", handshake_call)
+    hash_list = {}
+    with open("./csv/handshakes.csv", newline='') as handshakes_csv:
+        reader = csv.reader(handshakes_csv, delimiter=";")
+        ip = next(reader)[1]
+        handshakes_csv.seek(0)
+        for rows in reader:
+            if rows[1] == ip:
+                if rows[5] not in hash_list:
+                    hash_list[rows[5]] = list()
+                hash_list[rows[5]].append(rows[2])
+            else:
+                hash_list[rows[5]][hash_list[rows[5]].index(rows[1])] += ";1"
+    ## remove handshakes without answer
+    for key in hash_list:
+        hash_list[key][:] = [x for x in hash_list[key] if (";1" in x)]
+        for ip in hash_list[key]:
+            hash_list[key][hash_list[key].index(ip)] = ip[:len(ip)-2]
+    # filter Piece messages from the peers
+    for file_hash in hash_list:
+        file_size = 0
+        ips_list = str(hash_list[file_hash])
+        ips_list = "{" + ips_list[1:len(ips_list)-1] + "}"
+        ips_list = ips_list.replace("'", "\"")
+        pieces_filter = "bittorrent.msg.type == 7 and ip.src in {ips}".format(ips=ips_list)
+        pieces_call = "tshark -r {pcap} -T fields -E separator=';' -Y \"{filter}\" -o tcp.reassemble_out_of_order:TRUE -2 -e frame.time_relative -e ip.src -e tcp.srcport -e bittorrent.piece.index -e bittorrent.msg.length".format(filter=pieces_filter, pcap=args.pcap)
+        call_tshark(file_hash, pieces_call)
+        pieces_dict = {}
+        with open("./csv/{filehash}.csv".format(filehash=file_hash), newline='') as filehash_csv:
+            reader = csv.reader(filehash_csv, delimiter=";")
+            csv_empty = True
+            for rows in reader:
+                csv_empty = False
+                for ind in rows[3].split(","):
+                    if ind not in pieces_dict:
+                        pieces_dict[ind] = list()
+                    contributor = "{ip}:{port}".format(ip=rows[1], port=rows[2])
+                    if contributor not in pieces_dict[ind]:
+                        pieces_dict[ind].append(contributor)
+            print("\ninfo_hash: {ih}".format(ih=file_hash))
+            print("pieces and their contributors:")
+            if csv_empty:
+                print("No Pieces messages found for info_hash {ih}. Possibly UDP or an extension used.".format(ih=file_hash))
+            else:
+                for hsh, val in pieces_dict.items():
+                    print("piece index " + hsh + ", contributors " + str(val))
+
 # parse arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('-pcap', type=str, required=True)
@@ -118,9 +168,9 @@ parser.add_argument('-peers', action='store_true')
 parser.add_argument('-download', action='store_true')
 args = parser.parse_args()
 
-
-
 if args.init:
     init_flag()
 if args.peers:
     peer_flag()
+if args.download:
+    download_flag()
